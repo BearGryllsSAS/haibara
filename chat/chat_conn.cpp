@@ -57,8 +57,13 @@ void chat_conn::initmysql_result(connection_pool *connPool)
         string temp1(row[0]);
         string temp2(row[1]);
         string temp3(row[2]);
+
+        cout << "temp = " << temp1 << ' ' << temp2 << ' ' << temp3 << endl;
+
         users[temp1] = {temp2, temp3};
     }
+
+    cout << "================================= initmysql_result ============================> users.size() = " << users.size() << endl;
 }
 
 //对文件描述符设置非阻塞
@@ -148,7 +153,7 @@ void chat_conn::init(int sockfd, const sockaddr_in &addr, char *root, int TRIGMo
 
     // 添加监听事件
     addfd(m_epollfd, sockfd, true, m_TRIGMode);    //这里有点问题？？？最后一个参数还初始化呢
-    m_user_count++;
+    // m_user_count++;
 
     //当浏览器出现连接重置时，可能是网站根目录出错或http响应格式出错或者访问的文件中内容完全为空
     m_TRIGMode = TRIGMode;
@@ -164,7 +169,9 @@ void chat_conn::init(int sockfd, const sockaddr_in &addr, char *root, int TRIGMo
 
 
     // 发送信息提示用户
-    
+
+    cout << "================================= init ===================================== " << endl;
+
     write(this->fd, ms1, sizeof ms1);
 }
 
@@ -196,10 +203,13 @@ void chat_conn::init()
 bool chat_conn::read_once()
 {
 
-    if (m_read_idx >= BUFFER_SIZE)
-    {
-        return false;
-    }
+    // if (m_read_idx >= BUFFER_SIZE)
+    // {
+        // return false;
+    // }
+
+    m_read_idx = 0;
+
     int bytes_read = 0;
 
     //LT读取数据
@@ -213,6 +223,8 @@ bool chat_conn::read_once()
             return false;
         }
 
+        this->buf[this->m_read_idx] = '\0';
+
         return true;
     }
     //ET读数据
@@ -223,6 +235,8 @@ bool chat_conn::read_once()
             bytes_read = recv(m_sockfd, buf + m_read_idx, BUFFER_SIZE - m_read_idx, 0);
             if (bytes_read == -1)
             {
+                this->buf[this->m_read_idx] = '\0';
+
                 if (errno == EAGAIN || errno == EWOULDBLOCK)
                     break;
                 return false;
@@ -264,10 +278,10 @@ void chat_conn::login_menu()
         onlineUsers.push_back(this->fd);
         chat_conn::m_user_count++;        // 在线人数加一
 
-        sprintf(this->buf,">               用户: %s  已登录,当前在线人数为 %d          \n\n>>>", this->usr_name, chat_conn::m_user_count);
+        sprintf(this->buf,">               用户: %s  已登录,当前在线人数为 %d          \n\n", this->usr_name, chat_conn::m_user_count);
         this->len = strlen(this->buf);
         char s[] = "----------------------epoll聊天室测试版--------------------\n";
-        write(this->fd, s, sizeof s);
+        write(this->fd, s, strlen(s));
         write(this->fd, this->buf, this->len);
 
         // 重新设定监听事件为写, 写的内容为向当前在线用户发送XXX已登录的信息
@@ -289,6 +303,8 @@ void chat_conn::login_menu()
         this->log_step = 1;
         strcpy(this->buf, "请输入登陆的UID:");
         write(this->fd, this->buf, strlen(this->buf));
+
+        // bzero(this->buf, sizeof(this->buf));
 
         // 将事件设定为登陆的回调 
         // event_del();
@@ -331,30 +347,55 @@ void chat_conn::login()
         int id = atoi(this->buf);
         strcpy(this->usr_id, this->buf);
         char s[100];
-        if(id > chat_conn::m_user_count || id <= 0)      
+        if(users.find(to_string(id)) == users.end())      
         {
             sprintf(s, "!用户UID:%s 不存在\n请重新输入账号UID:", this->buf);
             write(this->fd, s, strlen(s));
+            modfd(chat_conn::m_epollfd, this->fd, EPOLLIN, this->m_TRIGMode);
             return;
         }
         if(onlineUsersId.find(to_string(id)) != onlineUsersId.end())                      
         {
             sprintf(s, "!用户UID:%s 已登陆\n请重新输入账号UID:", this->buf);
             write(this->fd, s, strlen(s));
+            modfd(chat_conn::m_epollfd, this->fd, EPOLLIN, this->m_TRIGMode);
             return;
         }
         strcpy(this->buf, "请输入密码:");
         write(this->fd, this->buf, strlen(this->buf));
+
+        // bzero(this->buf, sizeof(this->buf));
+
+        memset(this->buf, '\0', sizeof(this->buf));
+
+        modfd(chat_conn::m_epollfd, this->fd, EPOLLIN, this->m_TRIGMode);
 
     }
     else if(2 == this->log_step)  // 输入用户密码
     {
         int id = atoi(this->usr_id);
         strcpy(this->usr_key, this->buf);
-        
-        string temp(this->buf);
 
-        if(temp == users[to_string(id)].second)
+        // cout << "================================ login =============================== this->buf =" << this->buf << endl;
+        // cout << "================================ login =============================== this->len =" << this->len << endl;
+        // cout << "================================ login =============================== this->len =" << this->len << endl;
+
+        string temp(this->buf);
+        // if (temp.front() == ' ') temp.erase(temp.begin());
+
+        // cout << "================================ login =============================== temp.back() =" << temp.back() << endl;
+
+        temp.pop_back();
+
+        // cout << "================================ login =============================== temp(this->buf) =" << temp << endl;
+        // cout << "================================ login =============================== to_string(id) =" << to_string(id) << endl;
+        // cout << "================================ login =============================== users[to_string(id)].second =" << users[to_string(id)].second << endl;
+        // cout << "================================ login =============================== bool temp.compare(users[to_string(id)].second) == 0 = " << (temp.compare(users[to_string(id)].second) == 0) << endl;
+
+
+        cout << "pos = " << temp.find_first_not_of(users[to_string(id)].second) << endl;
+
+        if(temp.compare(users[to_string(id)].second) == 0)
         {
             strcpy(this->usr_name, users[to_string(id)].first.c_str());  //数据库中还是得记录用户名，并且初始化的时候还是得把用户名读出来
 
@@ -389,6 +430,10 @@ void chat_conn::login()
         {
             strcpy(this->buf, "密码错误, 请重新输入密码:");
             write(this->fd, this->buf, strlen(this->buf));
+
+            bzero(this->buf, sizeof(this->buf));
+            modfd(chat_conn::m_epollfd, this->fd, EPOLLIN, this->m_TRIGMode);
+
             return;
         }
 
@@ -477,15 +522,25 @@ bool chat_conn::cb_write()
 
     if (this->len <= 0) return false;
 
+
+    cout << "==============================cb_write================================> buf = " << this->buf << endl;
+
+
     for(const auto& onlinefd : onlineUsers)             // 遍历当前的在线链表, 向在线用户发送
     {
         if(onlinefd == this->fd) continue;           // 发送数据给服务器的客户端一方并不需要发送
         write(onlinefd, this->buf, this->len);
     }
 
+    cout << "===============================cb_write===============================================> this->log_step = " << this->log_step << endl;
+
     if(this->log_step == 3) write(this->fd, "\n>>>", 4);   // 界面的优化,与主要逻辑无关 
 
-    if(this->log_step = 0) return false;   // 状态为登出
+    if(this->log_step == 0) return false;   // 状态为登出
+
+
+    bzero(this->buf, sizeof(this->buf));
+
 
     // 执行完一次事件之后--> 从树上摘下 ---> 重新设定要监听事件 ---> 重新挂上树监听
     // event_del(g_efd, ev);

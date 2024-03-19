@@ -343,7 +343,7 @@ void Server::dealwithwrite(int sockfd)
 {
     util_timer *timer = users_timer[sockfd].timer;
 
-    cout << "======================================5 users[sockfd].len = " << users[sockfd].len << endl; 
+    cout << "=============================== dealwithwrite ==================== users[sockfd].len = " << users[sockfd].len << endl; 
 
     // reactor
     if (1 == m_actormodel)
@@ -371,7 +371,7 @@ void Server::dealwithwrite(int sockfd)
     }
     else
     {
-        cout << "=============================================6" << endl;
+        // cout << "=============================================6" << endl;
 
         // proactor
         if (users[sockfd].cb_write())

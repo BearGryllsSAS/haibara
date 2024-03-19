@@ -8,7 +8,7 @@ set(CMAKE_CXX_STANDARD 11)
 project(Server)
 
 # 指定可执行程序的输出路径---宏EXECUTABLE_OUTPUT_PATH (若路径不存在则自动生成)
-set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR})
+# set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR})
 
 # 设置编译器，默认为 g++
 set(CMAKE_CXX_COMPILER g++)
